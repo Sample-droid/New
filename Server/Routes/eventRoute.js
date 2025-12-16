@@ -78,16 +78,25 @@ router.get('/events', async (req, res, next) => {
   }
 });
 
-// -------------------- GET EVENT BY ID --------------------
-router.get('/events/:id', async (req, res, next) => {
+// -------------------- GET EVENTS VISIBLE TO A USER --------------------
+router.get('/events/:userId', async (req, res, next) => {
   try {
-    const event = await Event.findById(req.params.id).select(
+    const { userId } = req.params;
+
+    const events = await Event.find({
+      isDisabled: false,
+      $or: [
+        { user: userId },            // events created by this user
+        { participants: userId },    // events the user joined
+        { isPublic: true }           // public events created by others
+      ]
+    })
+    .select(
       'name code date location description category image user isDisabled status maxParticipants currentParticipants'
-    );
+    )
+    .sort({ date: 1 });
 
-    if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
-
-    res.status(200).json({ success: true, message: 'Event retrieved', event });
+    res.status(200).json({ success: true, message: 'Events retrieved', events });
   } catch (error) {
     next(error);
   }
