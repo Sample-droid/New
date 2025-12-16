@@ -10,7 +10,10 @@ const connectDB = require('./Connection/dbconnection');
 
 // Routes
 const userRoute = require('./Routes/userRoute');
-const adminRoute = require('./Routes/adminRoute');
+
+
+
+
 const eventRoute = require('./Routes/eventRoute'); const donationHistoryRoute = require('./Routes/doantionhistory');
 
 const eventJoinRoute = require('./Routes/eventjoinRoute');
@@ -65,7 +68,7 @@ app.use(
 app.use('/api', eventJoinRoute);
 
 app.use('/api/auth', userRoute);
-app.use('/api', adminRoute);
+app.use('/api/admin', require('./Routes/adminRoute'));
 
 app.use('/api', eventRoute); app.use('/api', donationRoute); 
 app.use('/api', donationHistoryRoute);

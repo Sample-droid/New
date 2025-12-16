@@ -12,7 +12,8 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 // Pages / Components
 import Login from "./Components/Login/Login";
-import AdminLogin from "./Components/Login/AdminLogin/AdminLogin";
+
+import AdminLogin from "./Components/Admin/AdminLogin/AdminLogin";
 import Home from "./Components/Home/Home";
 import Features from "./Components/Features/Features";
 import EventJoin from "./Components/Forms/Events/EventJoin/EventJoin";
@@ -30,6 +31,7 @@ import Volunteer from "./Components/Volunteer/Volunteer";
 import EventHostPart from "./Components/Login/EventHostPart";
 import Signup from "./Components/Signup/Signup";
 import Welcomepage from "./Components/Welcomepage/Welcomepage";
+
 import AdminPanel from "./Components/Admin/AdminPanel";
 import Condacts from "./Components/Condact/Condacts";
 import DonationSuccess from "./Components/Donation/DonationSuccess";
@@ -61,9 +63,11 @@ function App() {
 
         {/* Admin (Protected) */}
         <Route
-          path="/admndashb"
+         
+         path="/admndashb"
           element={
             <ProtectedRoute>
+              
               <AdminPanel />
             </ProtectedRoute>
           }

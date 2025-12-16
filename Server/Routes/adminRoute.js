@@ -1,65 +1,47 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const Admin = require("../Model/Admin");
 
-// Admin Login - POST /api/admin/login
-router.post("/admin/login", async (req, res) => {
-  try {
-    const { email, password } = req.body;
 
-    // Check empty fields
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and password are required",
-      });
-    }
+const Admin = require('../Model/Admin');
 
-    // Check admin exists
-    const admin = await Admin.findOne({ email });
-    if (!admin) {
-      return res.status(400).json({
-        success: false,
-        message: "Admin not found",
-      });
-    }
 
-    // Compare hashed password
-    const isMatch = await bcrypt.compare(password, admin.password);
-    if (!isMatch) {
-      return res.status(400).json({
-        success: false,
-        message: "Incorrect password",
-      });
-    }
+// POST: Admin Login
+router.post('/login', async (req, res) => {
+try {
+const { username, password } = req.body;
 
-    // Generate JWT
-    const token = jwt.sign(
-      { id: admin._id, email: admin.email },
-      process.env.JWT_SECRET || "mysecretkey",
-      { expiresIn: "7d" }
-    );
 
-    res.status(200).json({
-      success: true,
-      message: "Admin logged in successfully",
-      token,
-      admin: {
-        id: admin._id,
-        email: admin.email,
-        name: admin.name,
-      },
-    });
+if (!username || !password) {
+return res.status(400).json({ message: 'Username and password required' });
+}
 
-  } catch (error) {
-    console.error("Admin Login Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  }
+
+const admin = await Admin.findOne({ username });
+if (!admin) {
+return res.status(401).json({ message: 'Invalid credentials' });
+}
+
+
+const isMatch = await admin.matchPassword(password);
+if (!isMatch) {
+return res.status(401).json({ message: 'Invalid credentials' });
+}
+
+
+res.status(200).json({
+message: 'Login successful',
+admin: {
+id: admin._id,
+username: admin.username
+}
 });
+} catch (error) {
+res.status(500).json({ message: 'Server error', error: error.message });
+}});
+
+
+
+
+
 
 module.exports = router;
