@@ -1,113 +1,97 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const path = require('path');
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
+const morgan = require("morgan");
+const path = require("path");
 
 // DB connection
-const connectDB = require('./Connection/dbconnection');
+const connectDB = require("./Connection/dbconnection");
 
 // Routes
-const userRoute = require('./Routes/userRoute');
-
-
-
-
-const eventRoute = require('./Routes/eventRoute'); const donationHistoryRoute = require('./Routes/doantionhistory');
-
-const eventJoinRoute = require('./Routes/eventjoinRoute');
-const donationRoute = require('./Routes/donationRoute'); // adjust the path
-
+const userRoute = require("./Routes/userRoute");
+const adminRoute = require("./Routes/adminRoute");
+const eventRoute = require("./Routes/eventRoute");
+const eventJoinRoute = require("./Routes/eventjoinRoute");
+const donationRoute = require("./Routes/donationRoute");
+const donationHistoryRoute = require("./Routes/doantionhistory");
 
 const app = express();
 
-// Connect to MongoDB
+// -------------------- CONNECT DB --------------------
 connectDB();
 
-// Global Middleware
+// -------------------- GLOBAL MIDDLEWARE --------------------
 app.use(helmet());
-app.use(morgan('dev'));
+app.use(morgan("dev"));
 
-// Allow all localhost ports (5173, 5174, 3000, etc.)
 app.use(
   cors({
     origin: /http:\/\/localhost:\d+$/,
-    
-   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-    
-  credentials: true
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   })
 );
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-/* ------------------------------------------------------------------
-   STATIC IMAGE SERVING (IMPORTANT!)
-   Fixes broken image issue by:
-   ✓ Setting CORP: cross-origin
-   ✓ Setting CORS headers
-   ✓ Serving images from /uploads/events correctly
------------------------------------------------------------------- */
-app.use('/uploads', (req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+// -------------------- STATIC IMAGE SERVING --------------------
+app.use("/uploads", (req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
   next();
 });
 
 app.use(
-  '/uploads/events',
-  express.static(path.join(__dirname, 'uploads/events'))
+  "/uploads/events",
+  express.static(path.join(__dirname, "uploads/events"))
 );
 
-/* ------------------------------------------------------------------
-   ROUTES
------------------------------------------------------------------- */
-app.use('/api', eventJoinRoute);
+// -------------------- ROUTES --------------------
 
-app.use('/api/auth', userRoute);
-app.use('/api/admin', require('./Routes/adminRoute'));
+// 🔐 AUTH ROUTES
+app.use("/api/auth", userRoute);     // user login/signup
+app.use("/api/admin", adminRoute);   // admin login ONLY
 
-app.use('/api', eventRoute); app.use('/api', donationRoute); 
-app.use('/api', donationHistoryRoute);
+// 📅 EVENT ROUTES
+app.use("/api", eventRoute);
+app.use("/api", eventJoinRoute);
 
-// Health Check
-app.get('/', (req, res) => {
+// 💰 DONATION ROUTES
+app.use("/api", donationRoute);
+app.use("/api", donationHistoryRoute);
+
+// -------------------- HEALTH CHECK --------------------
+app.get("/", (req, res) => {
   res.status(200).json({
-    status: 'OK',
-    message: '🎉 Backend is up and running!'
+    status: "OK",
+    message: "🎉 Backend is up and running!",
   });
 });
 
-// 404 Handler
+// -------------------- 404 HANDLER --------------------
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: 'Endpoint not found'
+    message: "Endpoint not found",
   });
 });
 
-// Error Handler
+// -------------------- ERROR HANDLER --------------------
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res
-    .status(err.status || 500)
-    .json({
-      success: false,
-      message: err.message || 'Internal Server Error'
-    });
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal Server Error",
+  });
 });
 
-// Start Server
+// -------------------- START SERVER --------------------
 const PORT = process.env.PORT || 8000;
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
-
-
-
-
 
 });

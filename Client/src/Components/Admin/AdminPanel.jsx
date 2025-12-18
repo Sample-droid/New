@@ -1,205 +1,374 @@
-import React from "react";
-import { useState } from "react";
-import PropTypes from "prop-types";
-import AppBar from "@mui/material/AppBar";
-import Toolbar from "@mui/material/Toolbar";
-import Typography from "@mui/material/Typography";
-import IconButton from "@mui/material/IconButton"; import EventJoin from "../Forms/Events/EventJoin/EventJoin";
-import Box from "@mui/material/Box";
-import Drawer from "@mui/material/Drawer";
-import List from "@mui/material/List";
-import ListItemButton from "@mui/material/ListItemButton";
-import ListItemIcon from "@mui/material/ListItemIcon";
-import ListItemText from "@mui/material/ListItemText";
-import Divider from "@mui/material/Divider";
-import CssBaseline from "@mui/material/CssBaseline";
-import MenuIcon from "@mui/icons-material/Menu";
-import DashboardIcon from "@mui/icons-material/Dashboard";
-import PeopleIcon from "@mui/icons-material/People";
-import EventIcon from "@mui/icons-material/Event";
-import VolunteerActivismIcon from "@mui/icons-material/VolunteerActivism";
-import Container from "@mui/material/Container";
-import Button from "@mui/material/Button";
-import "./AdminPanel.css"; // separate CSS file (not included here)
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import {
+  Box,
+  Typography,
+  IconButton,
+  Stack,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Button,
+  Tooltip,
+  alpha,
+  InputBase,
+  Skeleton,
+  useTheme,
+  Snackbar,
+  Alert,
+} from "@mui/material";
+import {
+  Search as SearchIcon,
+  Refresh as RefreshIcon,
+  Block as BlockIcon,
+  CheckCircle as EnableIcon,
+  Delete as DeleteIcon,
+} from "@mui/icons-material";
 
-const drawerWidth = 240;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
-const navItems = [
-  { id: "dashboard", label: "Dashboard", icon: <DashboardIcon /> },
-  { id: "users", label: "User Management", icon: <PeopleIcon /> },
-  { id: "events", label: "Events", icon: <EventIcon /> },
-  { id: "donation", label: "Donation", icon: <VolunteerActivismIcon /> },
-];
+const AdminPanel = () => {
+  const theme = useTheme();
+  const [users, setUsers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [actionType, setActionType] = useState(""); // "disable", "enable", "delete"
+  const [actionLoading, setActionLoading] = useState(false);
 
-function DashboardView() {
-  return (
-    <Box>
-      <Typography variant="h5" gutterBottom>
-        Dashboard
-      </Typography>
-      <Typography variant="body1">Quick stats and summaries go here.</Typography>
-      
-    </Box>
-  );
-}
+  const token = localStorage.getItem("adminToken");
 
-function UserManagementView() {
-  return (
-    <Box>
-      <Typography variant="h5" gutterBottom>
-        User Management
-      </Typography>
-      <Typography variant="body1">List users, edit roles, deactivate accounts.</Typography>
-      <Button variant="contained" sx={{ mt: 2 }}>
-        Add New User
-      </Button>
-    </Box>
-  );
-}
+  // Snackbar
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
-function EventsView() {
-  return (
-    <Box>
-     
-      <Typography variant="h4" gutterBottom>
-        Events
-      </Typography>
-      <Typography variant="body1">Create, edit and manage events here.</Typography>
-      <Button variant="outlined" sx={{ mt: 2 }}>
-       
-        Create Event
-      </Button><br/><br/>
-  
-
-<Typography  variant="h5"> Ongoing Events <EventJoin/></Typography> </Box>
-  );
-}
-
-function DonationView() {
-  return (
-    <Box>
-      <Typography variant="h5" gutterBottom>
-        Donation
-      </Typography>
-      <Typography variant="body1">Manage donation campaigns and records.</Typography>
-    </Box>
-  );
-}
-
-export default function AdminPanel(props) {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [selected, setSelected] = useState("dashboard");
-
-  const handleDrawerToggle = () => {
-    setMobileOpen((prev) => !prev);
+  const showSnackbar = (message, severity = "success") => {
+    setSnackbar({ open: true, message, severity });
   };
 
-  const drawer = (
-    <div className="admin-drawer">
-      <Toolbar>
-        <Typography variant="h6" noWrap>
-          Admin Panel
-        </Typography>
-      </Toolbar>
-      <Divider />
-      <List>
-        {navItems.map((item) => (
-          <ListItemButton
-            key={item.id}
-            selected={selected === item.id}
-            onClick={() => {
-              setSelected(item.id);
-              setMobileOpen(false);
-            }}
-          >
-            <ListItemIcon>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.label} />
-          </ListItemButton>
-        ))}
-      </List>
-      <Divider />
-      <Box sx={{ p: 2 }}>
-        <Typography variant="caption">Signed in as Admin</Typography>
-      </Box>
-    </div>
-  );
+  const handleSnackbarClose = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
 
-  function renderContent() {
-    switch (selected) {
-      case "users":
-        return <UserManagementView />;
-      case "events":
-        return <EventsView />;
-      case "donation":
-        return <DonationView />;
-      default:
-        return <DashboardView />;
+  // Fetch Users
+  const fetchUsers = async () => {
+    if (!token) {
+      showSnackbar("Authentication token missing", "error");
+      return;
     }
-  }
+
+    try {
+      setLoading(true);
+      const res = await axios.get(`${API_BASE_URL}/api/auth/users`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const usersList = res.data || [];
+      setUsers(usersList);
+      setFilteredUsers(usersList);
+    } catch (err) {
+      console.error("Error fetching users:", err);
+      showSnackbar("Failed to load users", "error");
+      setUsers([]);
+      setFilteredUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  // Search Filter
+  useEffect(() => {
+    const filtered = users.filter(
+      (user) =>
+        user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.role?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredUsers(filtered);
+  }, [searchTerm, users]);
+
+  // Dialog Handlers
+  const openDialog = (user, type) => {
+    setSelectedUser(user);
+    setActionType(type);
+    setDialogOpen(true);
+  };
+
+  const closeDialog = () => {
+    setSelectedUser(null);
+    setActionType("");
+    setDialogOpen(false);
+  };
+
+  // Toggle User Status
+  const handleToggleStatus = async () => {
+    if (!selectedUser) return;
+
+    try {
+      setActionLoading(true);
+      const res = await axios.patch(
+        `${API_BASE_URL}/api/auth/user/${selectedUser._id}/status`,
+        { isActive: !selectedUser.isActive },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setUsers((prev) =>
+        prev.map((u) =>
+          u._id === selectedUser._id ? { ...u, isActive: res.data.user.isActive } : u
+        )
+      );
+
+      closeDialog();
+      showSnackbar(
+        `User "${selectedUser.username}" has been ${res.data.user.isActive ? "enabled" : "disabled"}.`,
+        "success"
+      );
+    } catch (err) {
+      console.error(err);
+      showSnackbar("Failed to update user status", "error");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Delete User
+  const handleDelete = async () => {
+    if (!selectedUser) return;
+
+    try {
+      setActionLoading(true);
+      await axios.delete(`${API_BASE_URL}/api/auth/user/${selectedUser._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setUsers((prev) => prev.filter((u) => u._id !== selectedUser._id));
+      closeDialog();
+      showSnackbar(`User "${selectedUser.username}" deleted permanently.`, "success");
+    } catch (err) {
+      console.error(err);
+      showSnackbar("Failed to delete user", "error");
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   return (
-    <Box sx={{ display: "flex" }} className="admin-panel-root">
-      <CssBaseline />
-      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { md: "none" } }}
+    <Box>
+      {/* Header */}
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        justifyContent="space-between"
+        alignItems="center"
+        mb={4}
+        gap={2}
+      >
+        <Typography variant="h4" fontWeight="bold">
+          User Management
+        </Typography>
+
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Paper
+            elevation={0}
+            sx={{
+              p: "2px 4px",
+              display: "flex",
+              alignItems: "center",
+              width: { xs: "100%", sm: 300 },
+              bgcolor: "grey.100",
+              border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+            }}
           >
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" noWrap component="div">
-            Admin Panel
-          </Typography>
-        </Toolbar>
-      </AppBar>
+            <IconButton sx={{ p: "10px" }}>
+              <SearchIcon />
+            </IconButton>
+            <InputBase
+              placeholder="Search users..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              sx={{ ml: 1, flex: 1 }}
+            />
+          </Paper>
 
-      {/* Permanent drawer on md+, temporary on smaller screens */}
-      <Box
-        component="nav"
-        sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}
-        aria-label="admin navigation"
-      >
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{ keepMounted: true }}
-          sx={{
-            display: { xs: "block", md: "none" },
-            "& .MuiDrawer-paper": { boxSizing: "border-box", width: drawerWidth },
-          }}
-        >
-          {drawer}
-        </Drawer>
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: "none", md: "block" },
-            "& .MuiDrawer-paper": { boxSizing: "border-box", width: drawerWidth },
-          }}
-          open
-        >
-          {drawer}
-        </Drawer>
-      </Box>
+          <Tooltip title="Refresh">
+            <IconButton onClick={fetchUsers} color="primary">
+              <RefreshIcon />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      </Stack>
 
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: 3,
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          mt: 8,
-        }}
+      {/* Users Table */}
+      <Paper elevation={3} sx={{ borderRadius: 3, overflow: "hidden" }}>
+        <TableContainer sx={{ maxHeight: "calc(100vh - 280px)" }}>
+          <Table stickyHeader>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ bgcolor: "grey.50", fontWeight: "bold" }}>Username</TableCell>
+                <TableCell sx={{ bgcolor: "grey.50", fontWeight: "bold" }}>Email</TableCell>
+                <TableCell sx={{ bgcolor: "grey.50", fontWeight: "bold" }}>Role</TableCell>
+                <TableCell sx={{ bgcolor: "grey.50", fontWeight: "bold" }}>Status</TableCell>
+                <TableCell sx={{ bgcolor: "grey.50", fontWeight: "bold" }} align="right">
+                  Actions
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading ? (
+                [...Array(6)].map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton variant="text" width="70%" /></TableCell>
+                    <TableCell><Skeleton variant="text" width="80%" /></TableCell>
+                    <TableCell><Skeleton variant="rounded" width={80} height={28} /></TableCell>
+                    <TableCell><Skeleton variant="rounded" width={90} height={28} /></TableCell>
+                    <TableCell align="right"><Skeleton variant="rounded" width={140} height={36} /></TableCell>
+                  </TableRow>
+                ))
+              ) : filteredUsers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center" sx={{ py: 8 }}>
+                    <Typography variant="h6" color="text.secondary">
+                      {searchTerm ? "No users found matching your search." : "No users available yet."}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredUsers.map((user) => (
+                  <TableRow
+                    key={user._id}
+                    hover
+                    sx={{
+                      opacity: !user.isActive ? 0.6 : 1,
+                      "&:hover": { bgcolor: alpha(theme.palette.primary.main, 0.04) },
+                    }}
+                  >
+                    <TableCell>
+                      <Typography variant="body1" fontWeight="medium">
+                        {user.username}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={user.role || "user"}
+                        color={user.role === "admin" ? "secondary" : "primary"}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={user.isActive ? "Active" : "Disabled"}
+                        color={user.isActive ? "success" : "error"}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Stack direction="row" spacing={1} justifyContent="flex-end">
+                        <Tooltip title={user.isActive ? "Disable User" : "Enable User"}>
+                          <IconButton
+                            color={user.isActive ? "warning" : "success"}
+                            onClick={() => openDialog(user, user.isActive ? "disable" : "enable")}
+                          >
+                            {user.isActive ? <BlockIcon /> : <EnableIcon />}
+                          </IconButton>
+                        </Tooltip>
+
+                        <Tooltip title="Delete User">
+                          <IconButton color="error" onClick={() => openDialog(user, "delete")}>
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          Confirm {actionType === "delete" ? "Delete" : actionType === "enable" ? "Enable" : "Disable"} User
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to{" "}
+            <strong>
+              {actionType === "disable" ? "disable" : actionType === "enable" ? "enable" : "permanently delete"}
+            </strong>{" "}
+            the user:
+            <br />
+            <Typography component="span" fontWeight="bold" color="primary">
+              {selectedUser?.username} ({selectedUser?.email})
+            </Typography>
+            {actionType === "delete" && (
+              <Typography variant="body2" color="error" mt={2}>
+                This action cannot be undone.
+              </Typography>
+            )}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDialog} disabled={actionLoading}>
+            Cancel
+          </Button>
+          {actionType === "disable" && (
+            <Button variant="contained" color="warning" onClick={handleToggleStatus} disabled={actionLoading}>
+              Disable
+            </Button>
+          )}
+          {actionType === "enable" && (
+            <Button variant="contained" color="success" onClick={handleToggleStatus} disabled={actionLoading}>
+              Enable
+            </Button>
+          )}
+          {actionType === "delete" && (
+            <Button variant="contained" color="error" onClick={handleDelete} disabled={actionLoading}>
+              Delete Permanently
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar Notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={5000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
-        <Container maxWidth="lg">{renderContent()}</Container>
-      </Box>
+        <Alert
+          onClose={handleSnackbarClose}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: "100%", boxShadow: 4 }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    
     </Box>
   );
 
-
-}
+};
+export default AdminPanel;

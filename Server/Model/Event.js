@@ -82,10 +82,18 @@ const eventSchema = new mongoose.Schema(
     },
 
     isDisabled: {
-      type: Boolean,
-      default: false,
-    },
+  type: Boolean,
+  default: false,
+},
+
+disabledBy: {
+  type: String,
+  enum: ['admin', 'user', null],
+  default: null,
+
+},
   },
+  
   {
     timestamps: true,
   }
@@ -123,5 +131,4 @@ eventSchema.pre('findOneAndUpdate', function (next) {
   }
   next();
 });
-
 module.exports = mongoose.models.Event || mongoose.model("Event", eventSchema);

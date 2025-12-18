@@ -1,92 +1,134 @@
 const express = require("express");
 const router = express.Router();
-const userModel = require("../Model/user");
+const User = require("../Model/user");
 const auth = require("../middleware/auth");
 const jwt = require("jsonwebtoken");
 
+/* ===========================
+   JWT TOKEN
+=========================== */
 const generateToken = (user) => {
-  const payload = {
-    id: user.id,
-    email: user.email,
-    role: user.role,
-  };
-  const options = { expiresIn: "1h" };
-  return jwt.sign(payload, process.env.JWT_SECRET, options);
+  return jwt.sign(
+    { id: user._id, email: user.email, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: "1h" }
+  );
 };
 
+/* ===========================
+   SIGNUP
+=========================== */
 router.post("/signup", async (req, res) => {
   try {
-    await userModel(req.body).save();
-    res.status(201).send({ message: "User added successfully" });
+    await new User(req.body).save();
+    res.status(201).json({ message: "User added successfully" });
   } catch (error) {
-    console.error(error);
-    res.status(500).send({ message: "Something went wrong" });
+    res.status(500).json({ message: "Something went wrong" });
   }
 });
 
-
-// Login route
+/* ===========================
+   LOGIN
+=========================== */
 router.post("/login", async (req, res) => {
   try {
-    const user = await userModel.findOne({ username: req.body.username });
+    const user = await User.findOne({ username: req.body.username });
 
     if (!user) {
-      return res.status(404).send({ message: "User not found" });
+      return res.status(404).json({ message: "User not found" });
     }
 
     if (user.password !== req.body.password) {
-      return res.status(401).send({ message: "Invalid password" });
+      return res.status(401).json({ message: "Invalid password" });
+    }
+
+    if (user.isActive === false) {
+      return res.status(403).json({ message: "User account is disabled" });
     }
 
     const token = generateToken(user);
-    return res.status(200).json({
+
+    res.status(200).json({
       message: `Welcome ${user.role}`,
       token,
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).send({ message: "Something went wrong" });
+    res.status(500).json({ message: "Something went wrong" });
   }
 });
 
-// Delete user route (optional)
-router.delete("/:id", async (req, res) => {
+/* ===========================
+   GET USER BY ID
+=========================== */
+router.get("/user/:id", auth, async (req, res) => {
   try {
-    const id = req.params.id;
-    const deleted = await userModel.findByIdAndDelete(id);
-    if (!deleted) {
-      return res.status(404).send({ message: "User not found" });
-    }
-    res.status(200).send({ message: "User deleted successfully" });
-  } catch (error) {
-    console.error(error);
-    res.status(500).send({ message: "Something went wrong" });
-  }
-});
-
-router.get("/user/:id", async (req, res) => {
-  try {
-   
-    const id = req.params.id;
-    const user = await userModel.findById(id).select('-password');
-    res.send(user);
+    const user = await User.findById(req.params.id).select("-password");
     if (!user) {
-      return res.status(404).send({ message: "User not found" });
+      return res.status(404).json({ message: "User not found" });
     }
+    res.json(user);
   } catch (error) {
-    console.error(error);
-    res.status(500).send({ message: "Something went wrong" });
+    res.status(500).json({ message: "Something went wrong" });
   }
 });
 
-router.get("/users", async (req, res) => {
+/* ===========================
+   GET ALL USERS (ADMIN)
+=========================== */
+router.get("/users", auth, async (req, res) => {
   try {
-    const user = await userModel.find();
-    console.log(user);
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const users = await User.find().select("-password");
+    res.json(users);
   } catch (error) {
-    console.error(error);
-    res.status(500).send({ message: "Something went wrong" });
+    res.status(500).json({ message: "Something went wrong" });
   }
 });
 
+/* ===========================
+   DELETE USER (ADMIN)
+=========================== */
+router.delete("/user/:id", auth, async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const deleted = await User.findByIdAndDelete(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({ message: "User deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Something went wrong" });
+  }
+});
+/* ===========================
+   ENABLE / DISABLE USER (ADMIN)
+=========================== */
+router.patch("/user/:id/status", auth, async (req, res) => {
+  try {
+    if (req.user.role !== "admin")
+      return res.status(403).json({ message: "Access denied" });
+
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { isActive: req.body.isActive },
+      { new: true }
+    ).select("-password");
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({
+      message: `User ${user.isActive ? "enabled" : "disabled"} successfully`,
+      user,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Something went wrong" });
+  }
+});
 module.exports = router;

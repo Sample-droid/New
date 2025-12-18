@@ -5,14 +5,14 @@ import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 
 // Auth
-import { AuthProvider } from "./Components/Context/AuthContext"; import ProtectedRoute from "./Components/Context/ProtectedRoute";
+import { AuthProvider } from "./Components/Context/AuthContext";
+import ProtectedRoute from "./Components/Context/ProtectedRoute";
 
 // Stripe
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 // Pages / Components
 import Login from "./Components/Login/Login";
-
 import AdminLogin from "./Components/Admin/AdminLogin/AdminLogin";
 import Home from "./Components/Home/Home";
 import Features from "./Components/Features/Features";
@@ -31,11 +31,12 @@ import Volunteer from "./Components/Volunteer/Volunteer";
 import EventHostPart from "./Components/Login/EventHostPart";
 import Signup from "./Components/Signup/Signup";
 import Welcomepage from "./Components/Welcomepage/Welcomepage";
-
-import AdminPanel from "./Components/Admin/AdminPanel";
 import Condacts from "./Components/Condact/Condacts";
 import DonationSuccess from "./Components/Donation/DonationSuccess";
 import DonationHistory from "./Components/Donation/DonationHistory";
+
+// Admin Dashboard
+import AdminDashboard from "./Components/Admin/AdminDashboard";
 
 function App() {
   return (
@@ -61,14 +62,12 @@ function App() {
         <Route path="/logindashboard" element={<LoginDashboard />} />
         <Route path="/admn" element={<AdminLogin />} />
 
-        {/* Admin (Protected) */}
+        {/* Admin Dashboard */}
         <Route
-         
-         path="/admndashb"
+          path="/admndashb"
           element={
             <ProtectedRoute>
-              
-              <AdminPanel />
+              <AdminDashboard />
             </ProtectedRoute>
           }
         />
@@ -114,8 +113,9 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/donationsuccess" element={<DonationSuccess />} />
 
+        {/* Donations */}
+        <Route path="/donationsuccess" element={<DonationSuccess />} />
         <Route
           path="/donationhistory"
           element={
@@ -124,8 +124,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
-        {/* Donations */}
         <Route
           path="/odonation"
           element={
@@ -136,7 +134,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route path="/donation-success" element={<DonationSuccess />} />
       </Routes>
     </AuthProvider>

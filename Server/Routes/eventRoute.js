@@ -93,6 +93,7 @@ router.get('/events/:id', async (req, res, next) => {
   }
 });
 
+
 // -------------------- GET EVENTS BY USER --------------------
 router.get('/events/user/:userid', async (req, res, next) => {
   try {
@@ -101,6 +102,20 @@ router.get('/events/user/:userid', async (req, res, next) => {
       .sort({ date: 1 });
 
     res.status(200).json({ success: true, message: 'Events retrieved', events });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// -------------------- GET ALL EVENTS FOR ADMIN --------------------
+router.get('/admin/events', async (req, res, next) => {
+  try {
+    const events = await Event.find()
+      .populate('user', 'username email') // <-- populate username and email
+      .select('name code date location description category image user isDisabled status maxParticipants currentParticipants')
+      .sort({ date: 1 });
+
+    res.status(200).json({ success: true, message: 'All events retrieved', events });
   } catch (error) {
     next(error);
   }
@@ -159,21 +174,51 @@ router.patch('/event/:id/disable', async (req, res, next) => {
   try {
     const { disable } = req.body;
     const event = await Event.findById(req.params.id);
-
     if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
 
+    // Cannot enable if admin disabled
+    if (!disable && event.disabledBy === 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'This event was disabled by admin and cannot be enabled by user.',
+      });
+    }
+
     event.isDisabled = disable;
+    event.disabledBy = disable ? 'user' : null;
     event.status = computeStatus(event);
     await event.save();
 
-    res.status(200).json({
-      success: true,
-      message: disable ? 'Event is currently Not Available' : 'Event enabled successfully',
-      event,
-    });
-  } catch (error) {
-    next(error);
+    res.status(200).json({ success: true, event });
+  } catch (err) {
+    next(err);
   }
 });
+
+router.patch('/admin/event/:id/disable', async (req, res, next) => {
+  try {
+    const { disable } = req.body;
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ success: false, message: 'Event not found' });
+
+    // Cannot enable if user disabled
+    if (!disable && event.disabledBy === 'user') {
+      return res.status(403).json({
+        success: false,
+        message: 'This event was disabled by the user and cannot be enabled by admin.',
+      });
+    }
+
+    event.isDisabled = disable;
+    event.disabledBy = disable ? 'admin' : null;
+    event.status = computeStatus(event);
+    await event.save();
+
+    res.status(200).json({ success: true, event });
+  } catch (err) {
+    next(err);
+  }
+});
+
 
 module.exports = router;

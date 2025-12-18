@@ -138,16 +138,21 @@ const EventHostPart = ({ userId, showSnackbar }) => {
     }
   };
 
+  
   const handleToggleDisable = async () => {
-    try {
-      await api.patch(`/api/event/${selectedEvent._id}/disable`, { disable: !selectedEvent.isDisabled });
-      showSnackbar(selectedEvent.isDisabled ? "Event enabled" : "Event disabled", "info");
-      setOpenDisable(false);
-      if (eventView === 0) fetchHostedEvents();
-    } catch {
-      showSnackbar("Error updating event status", "error");
-    }
-  };
+  try {
+    await api.patch(`/api/event/${selectedEvent._id}/disable`, { disable: !selectedEvent.isDisabled });
+    showSnackbar(selectedEvent.isDisabled ? "Event enabled" : "Event disabled", "info");
+    setOpenDisable(false);
+    if (eventView === 0) fetchHostedEvents();
+  } catch (err) {
+    const message =
+      err?.response?.data?.message || "Error updating event status";
+    showSnackbar(message, "error");
+    setOpenDisable(false);
+  }
+};
+
 
   const handleLeaveEvent = async () => {
     try {
