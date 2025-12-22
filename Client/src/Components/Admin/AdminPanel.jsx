@@ -357,6 +357,7 @@ const AdminPanel = () => {
         onClose={handleSnackbarClose}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
+        
         <Alert
           onClose={handleSnackbarClose}
           severity={snackbar.severity}
@@ -364,11 +365,13 @@ const AdminPanel = () => {
           sx={{ width: "100%", boxShadow: 4 }}
         >
           {snackbar.message}
-        </Alert>
-      </Snackbar>
+        </Alert></Snackbar>
     
+
     </Box>
   );
 
 };
+
+
 export default AdminPanel;

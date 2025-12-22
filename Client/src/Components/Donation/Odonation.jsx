@@ -65,7 +65,6 @@ const Odonation = () => {
     setLoading(true);
     setError(null);
     setSuccess(null);
-    setStatus(null); // reset
 
     if (!stripe || !elements) {
       setError("Payment processing is unavailable. Try again shortly.");
@@ -93,6 +92,7 @@ const Odonation = () => {
       const response = await axios.post(`${baseurl}/api/donations`, {
         amount: amountInCents,
         currency: "usd",
+       
         name: user?.username || "Anonymous",
         email: user?.email || "anonymous@example.com",
         message: donation.message,
@@ -124,10 +124,10 @@ const Odonation = () => {
             { paymentIntentId }
           );
 
-          setStatus(updateRes?.data?.donation?.status || "succeeded");
+          
         } catch (err) {
           console.error("Failed to update donation status:", err);
-          setStatus("succeeded");
+         
         }
 
         setSuccess("Thank you for your donation! ❤️");
@@ -140,7 +140,7 @@ const Odonation = () => {
     } catch (err) {
       setError(err.response?.data?.error || "Something went wrong.");
       console.error(err);
-      setStatus("failed"); // ⬅️ ADDED
+     
     }
 
     setLoading(false);
@@ -278,6 +278,9 @@ const Odonation = () => {
     </Box>
   );
 };
+
+
+
 
 
 export default Odonation;

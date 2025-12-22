@@ -34,9 +34,9 @@ import Welcomepage from "./Components/Welcomepage/Welcomepage";
 import Condacts from "./Components/Condact/Condacts";
 import DonationSuccess from "./Components/Donation/DonationSuccess";
 import DonationHistory from "./Components/Donation/DonationHistory";
-
 // Admin Dashboard
-import AdminDashboard from "./Components/Admin/AdminDashboard";
+import AdminDashboard from "./Components/Admin/AdminDashboard"; import DonationAdmin from "./Components/Admin/DonationHistory/DonationAdmin";
+import AdminCategoryPanel from "./Components/Admin/AdminCategory";
 
 function App() {
   return (
@@ -71,7 +71,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-
+<Route path="/admincategory" element={<AdminCategoryPanel />} />
         {/* Events */}
         <Route
           path="/eventcreate"
@@ -116,6 +116,14 @@ function App() {
 
         {/* Donations */}
         <Route path="/donationsuccess" element={<DonationSuccess />} />
+        <Route
+          path="/donationadmin"
+          element={
+            <ProtectedRoute>
+              <DonationAdmin />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/donationhistory"
           element={

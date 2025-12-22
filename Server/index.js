@@ -62,6 +62,7 @@ app.use("/api", eventJoinRoute);
 // 💰 DONATION ROUTES
 app.use("/api", donationRoute);
 app.use("/api", donationHistoryRoute);
+app.use('/api', require('./Routes/categoryroute'));
 
 // -------------------- HEALTH CHECK --------------------
 app.get("/", (req, res) => {

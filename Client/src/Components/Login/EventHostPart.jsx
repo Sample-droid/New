@@ -28,7 +28,7 @@ import {
   LinearProgress,
   IconButton,
   TablePagination
-} from "@mui/material";
+} from "@mui/material"; import { useNavigate } from "react-router-dom";
 
 import {
   Edit as EditIcon,
@@ -52,7 +52,7 @@ const EventHostPart = ({ userId, showSnackbar }) => {
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [openEdit, setOpenEdit] = useState(false);
+  const [openEdit, setOpenEdit] = useState(false);const navigate = useNavigate();
   const [openDisable, setOpenDisable] = useState(false);
   const [openLeave, setOpenLeave] = useState(false);
 
@@ -66,6 +66,7 @@ const EventHostPart = ({ userId, showSnackbar }) => {
   });
   const [editImage, setEditImage] = useState(null);
 
+  // ---------------- FETCH EVENTS ----------------
   const fetchHostedEvents = async () => {
     if (!userId) return;
     setLoading(true);
@@ -97,19 +98,23 @@ const EventHostPart = ({ userId, showSnackbar }) => {
     setPage(0);
   }, [eventView, userId]);
 
-  const list = eventView === 0 ? events : joinedEvents.map(j => j.event).filter(Boolean);
+  const list = eventView === 0
+    ? events
+    : joinedEvents.map(j => j.event).filter(Boolean);
+
   const isHosted = eventView === 0;
   const paginatedList = list.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
+  // ---------------- EDIT EVENT ----------------
   const handleEditOpen = (e) => {
     setSelectedEvent(e);
     setEditData({
-      name: e.name,
-      date: format(new Date(e.date), "yyyy-MM-dd"),
-      location: e.location,
-      category: e.category,
-      description: e.description,
-      maxParticipants: e.maxParticipants
+      name: e.name || "",
+      date: e.date ? format(new Date(e.date), "yyyy-MM-dd") : "",
+      location: e.location || "",
+      category: e.category?.name || e.category || "",
+      description: e.description || "",
+      maxParticipants: e.maxParticipants || 0
     });
     setEditImage(null);
     setOpenEdit(true);
@@ -123,7 +128,6 @@ const EventHostPart = ({ userId, showSnackbar }) => {
       );
       return;
     }
-
     try {
       const formData = new FormData();
       Object.entries(editData).forEach(([k, v]) => formData.append(k, v));
@@ -138,22 +142,21 @@ const EventHostPart = ({ userId, showSnackbar }) => {
     }
   };
 
-  
+  // ---------------- TOGGLE DISABLE ----------------
   const handleToggleDisable = async () => {
-  try {
-    await api.patch(`/api/event/${selectedEvent._id}/disable`, { disable: !selectedEvent.isDisabled });
-    showSnackbar(selectedEvent.isDisabled ? "Event enabled" : "Event disabled", "info");
-    setOpenDisable(false);
-    if (eventView === 0) fetchHostedEvents();
-  } catch (err) {
-    const message =
-      err?.response?.data?.message || "Error updating event status";
-    showSnackbar(message, "error");
-    setOpenDisable(false);
-  }
-};
+    try {
+      await api.patch(`/api/event/${selectedEvent._id}/disable`, { disable: !selectedEvent.isDisabled });
+      showSnackbar(selectedEvent.isDisabled ? "Event enabled" : "Event disabled", "info");
+      setOpenDisable(false);
+      if (eventView === 0) fetchHostedEvents();
+    } catch (err) {
+      const message = err?.response?.data?.message || "Error updating event status";
+      showSnackbar(message, "error");
+      setOpenDisable(false);
+    }
+  };
 
-
+  // ---------------- LEAVE EVENT ----------------
   const handleLeaveEvent = async () => {
     try {
       await api.delete(`/api/forfeit-event`, { data: { userId, eventId: selectedEvent._id } });
@@ -179,6 +182,7 @@ const EventHostPart = ({ userId, showSnackbar }) => {
     setPage(0);
   };
 
+  // ---------------- RENDER ----------------
   return (
     <Box>
       <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
@@ -192,7 +196,7 @@ const EventHostPart = ({ userId, showSnackbar }) => {
 
       {loading && <CircularProgress sx={{ display: 'block', mx: 'auto', my: 4 }} />}
 
-      {!loading && list.length > 0 && (
+      {!loading && paginatedList.length > 0 && (
         <>
           <TableContainer component={Paper} sx={{ mb: 2 }}>
             <Table>
@@ -212,36 +216,42 @@ const EventHostPart = ({ userId, showSnackbar }) => {
               <TableBody>
                 {paginatedList.map((e) => (
                   <TableRow key={e._id} sx={{ opacity: e.isDisabled ? 0.6 : 1 }}>
-                    <TableCell>{e.name}</TableCell>
-                    <TableCell><Chip label={e.code} size="small" variant="outlined" color="primary" /></TableCell>
-                    <TableCell><Chip label={e.category} size="small" color="secondary" /></TableCell>
-                    <TableCell>{format(new Date(e.date), 'MMM dd, yyyy')}</TableCell>
-                    <TableCell sx={{ maxWidth: 120, overflow: 'hidden' }}>{e.location}</TableCell>
+                    <TableCell>{e?.name || "N/A"}</TableCell>
+                    <TableCell>
+                      <Chip label={e?.code || "N/A"} size="small" variant="outlined" color="primary" />
+                    </TableCell>
+                    <TableCell>
+                      <Chip label={e?.category?.name || e?.category || "N/A"} size="small" color="secondary" />
+                    </TableCell>
+                    <TableCell>{e?.date ? format(new Date(e.date), 'MMM dd, yyyy') : "N/A"}</TableCell>
+                    <TableCell sx={{ maxWidth: 120, overflow: 'hidden' }}>{e?.location || "N/A"}</TableCell>
                     <TableCell>
                       <Box sx={{ minWidth: 80 }}>
                         <LinearProgress
                           variant="determinate"
-                          value={Math.min((e.currentParticipants / e.maxParticipants) * 100, 100)}
+                          value={Math.min((e?.currentParticipants || 0) / (e?.maxParticipants || 1) * 100, 100)}
                           sx={{ height: 4, borderRadius: 2, mb: 0.5 }}
                         />
                         <Typography variant="caption">
-                          {e.currentParticipants || 0} / {e.maxParticipants}
+                          {e?.currentParticipants || 0} / {e?.maxParticipants || 0}
                         </Typography>
                       </Box>
                     </TableCell>
                     <TableCell>
-                      {e.image ? (
+                      {e?.image ? (
                         <Avatar src={`http://localhost:8000/${e.image}`} sx={{ width: 32, height: 32 }} />
                       ) : (
                         <Avatar sx={{ width: 32, height: 32, bgcolor: 'grey.300' }} />
                       )}
                     </TableCell>
                     <TableCell>
-                      {e.isDisabled ? (
+                      {e?.isDisabled ? (
                         <Chip size="small" label="Disabled" color="warning" />
-                      ) : e.status ? (
-                        <Chip size="small" label={e.status} color="success" />
-                      ) : null}
+                      ) : e?.status ? (
+                        <Chip size="small" label={typeof e.status === "string" ? e.status : e.status?.name || "N/A"} color="success" />
+                      ) : (
+                        <Chip size="small" label="N/A" color="default" />
+                      )}
                     </TableCell>
                     <TableCell>
                       {isHosted ? (
@@ -251,11 +261,11 @@ const EventHostPart = ({ userId, showSnackbar }) => {
                           </IconButton>
                           <IconButton
                             size="small"
-                            color={e.isDisabled ? "success" : "warning"}
+                            color={e?.isDisabled ? "success" : "warning"}
                             onClick={() => { setSelectedEvent(e); setOpenDisable(true); }}
-                            title={e.isDisabled ? "Enable" : "Disable"}
+                            title={e?.isDisabled ? "Enable" : "Disable"}
                           >
-                            {e.isDisabled ? <EnableIcon /> : <DisableIcon />}
+                            {e?.isDisabled ? <EnableIcon /> : <DisableIcon />}
                           </IconButton>
                         </>
                       ) : (
@@ -274,6 +284,7 @@ const EventHostPart = ({ userId, showSnackbar }) => {
               </TableBody>
             </Table>
           </TableContainer>
+
           <TablePagination
             component="div"
             count={list.length}
@@ -286,11 +297,24 @@ const EventHostPart = ({ userId, showSnackbar }) => {
         </>
       )}
 
-      {!loading && list.length === 0 && (
+      {!loading && paginatedList.length === 0 && (
         <Box textAlign="center" py={6}>
-          <Typography variant="h6" color="text.secondary" mb={2}>No events found.</Typography>
-          <Button variant="contained" color="primary">{isHosted ? "Create New" : "Join an Event"}</Button>
-        </Box>
+  <Typography variant="h6" color="text.secondary" mb={2}>
+    No events found.
+  </Typography>
+  <Button
+    variant="contained"
+    color="primary"
+    onClick={() => isHosted ? navigate("/eventcreate") : navigate("/eventjoin")}
+  >
+    {isHosted ? "Create New" : "Join an Event"}
+  </Button>
+
+
+
+
+
+</Box>
       )}
 
       {/* ---------------- EDIT EVENT DIALOG ---------------- */}
@@ -298,48 +322,20 @@ const EventHostPart = ({ userId, showSnackbar }) => {
         <DialogTitle>Edit Event</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField
-              fullWidth
-              label="Name"
-              value={editData.name}
-              onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-            />
+            <TextField fullWidth label="Name" value={editData.name} onChange={(e) => setEditData({ ...editData, name: e.target.value })} />
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField
-                fullWidth
-                type="date"
-                label="Date"
-                value={editData.date}
-                onChange={(e) => setEditData({ ...editData, date: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-              />
-              <TextField
-                fullWidth
-                label="Location"
-                value={editData.location}
-                onChange={(e) => setEditData({ ...editData, location: e.target.value })}
-              />
+              <TextField fullWidth type="date" label="Date" value={editData.date} onChange={(e) => setEditData({ ...editData, date: e.target.value })} InputLabelProps={{ shrink: true }} />
+              <TextField fullWidth label="Location" value={editData.location} onChange={(e) => setEditData({ ...editData, location: e.target.value })} />
             </Stack>
             <FormControl fullWidth>
               <InputLabel>Category</InputLabel>
-              <Select
-                value={editData.category}
-                label="Category"
-                onChange={(e) => setEditData({ ...editData, category: e.target.value })}
-              >
+              <Select value={editData.category} label="Category" onChange={(e) => setEditData({ ...editData, category: e.target.value })}>
                 <MenuItem value="Food Donation">Food Donation</MenuItem>
                 <MenuItem value="Tree Planting">Tree Planting</MenuItem>
                 <MenuItem value="Cleaning">Cleaning</MenuItem>
               </Select>
             </FormControl>
-            <TextField
-              fullWidth
-              multiline
-              rows={3}
-              label="Description"
-              value={editData.description}
-              onChange={(e) => setEditData({ ...editData, description: e.target.value })}
-            />
+            <TextField fullWidth multiline rows={3} label="Description" value={editData.description} onChange={(e) => setEditData({ ...editData, description: e.target.value })} />
             <TextField
               fullWidth
               type="number"
@@ -347,11 +343,8 @@ const EventHostPart = ({ userId, showSnackbar }) => {
               value={editData.maxParticipants}
               onChange={(e) => {
                 const value = parseInt(e.target.value, 10);
-                if (value < selectedEvent.currentParticipants) {
-                  showSnackbar(
-                    `Cannot set below current participants (${selectedEvent.currentParticipants})`,
-                    "error"
-                  );
+                if (value < selectedEvent?.currentParticipants) {
+                  showSnackbar(`Cannot set below current participants (${selectedEvent.currentParticipants})`, "error");
                   return;
                 }
                 setEditData({ ...editData, maxParticipants: value });
@@ -371,9 +364,9 @@ const EventHostPart = ({ userId, showSnackbar }) => {
       </Dialog>
 
       {/* ---------------- DISABLE EVENT DIALOG ---------------- */}
-      
       <Dialog open={openDisable} onClose={() => setOpenDisable(false)}>
         <DialogTitle>{selectedEvent?.isDisabled ? "Enable" : "Disable"} Event</DialogTitle>
+       
         <DialogContent>
           <Typography>Confirm {selectedEvent?.isDisabled ? "enable" : "disable"}?</Typography>
         </DialogContent>
@@ -387,13 +380,14 @@ const EventHostPart = ({ userId, showSnackbar }) => {
             {selectedEvent?.isDisabled ? "Enable" : "Disable"}
           </Button>
         </DialogActions>
+      
       </Dialog>
 
       {/* ---------------- LEAVE EVENT DIALOG ---------------- */}
       <Dialog open={openLeave} onClose={() => setOpenLeave(false)}>
         <DialogTitle>Leave Event</DialogTitle>
         <DialogContent>
-          <Typography>Confirm leave <strong>{selectedEvent?.name}</strong>?</Typography>
+          <Typography>Confirm leave <strong>{selectedEvent?.name || "N/A"}</strong>?</Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenLeave(false)}>Cancel</Button>
@@ -403,4 +397,5 @@ const EventHostPart = ({ userId, showSnackbar }) => {
     </Box>
   );
 };
+
 export default EventHostPart;

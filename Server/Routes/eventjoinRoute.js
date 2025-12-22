@@ -68,24 +68,21 @@ router.delete('/forfeit-event', async (req, res) => {
 router.get('/joined/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
+
     const joinedEvents = await EventJoin.find({ user: userId })
-      .populate('event')
+      .populate({
+        path: 'event',
+        populate: { path: 'category', select: 'name' }, // populate category name if it's a separate model
+      })
       .populate('user', 'username email role');
-    res.status(200).json({ success: true, message: 'Joined events fetched successfully', joinedEvents });
+
+    res.status(200).json({
+      success: true,
+      message: 'Joined events fetched successfully',
+      joinedEvents,
+    });
   } catch (error) {
     console.error('Fetch Joined Events Error:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
-  }
-});
-
-// -------------------- CHECK IF USER JOINED SPECIFIC EVENT --------------------
-router.get('/joined/:userId/:eventId', async (req, res) => {
-  try {
-    const { userId, eventId } = req.params;
-    const existingJoin = await EventJoin.findOne({ user: userId, event: eventId });
-    res.status(200).json({ success: true, joined: !!existingJoin });
-  } catch (error) {
-    console.error('Check Join Error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });

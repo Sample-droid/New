@@ -43,14 +43,14 @@ const eventSchema = new mongoose.Schema(
       maxlength: [1000, 'Description cannot exceed 1000 characters'],
     },
 
-    category: {
-      type: String,
-      required: [true, 'Event category is required'],
-      enum: {
-        values: ['Food Donation', 'Tree Planting', 'Cleaning'],
-        message: 'Invalid category. Must be one of: Food Donation, Tree Planting, Cleaning',
-      },
-    },
+    
+   category: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: 'Category',
+  required: true,
+},
+
+  
 
     image: {
       type: String,
