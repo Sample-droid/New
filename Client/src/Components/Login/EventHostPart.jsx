@@ -55,7 +55,7 @@ const EventHostPart = ({ userId, showSnackbar }) => {
   const [openEdit, setOpenEdit] = useState(false);const navigate = useNavigate();
   const [openDisable, setOpenDisable] = useState(false);
   const [openLeave, setOpenLeave] = useState(false);
-
+  const [categories, setCategories] = useState([]); // ✅ added
   const [editData, setEditData] = useState({
     name: "",
     date: "",
@@ -65,9 +65,15 @@ const EventHostPart = ({ userId, showSnackbar }) => {
     maxParticipants: 0
   });
   const [editImage, setEditImage] = useState(null);
-
-  // ---------------- FETCH EVENTS ----------------
-  const fetchHostedEvents = async () => {
+  // ---------------- FETCH CATEGORIES (ONLY ADDITION) ----------------
+  useEffect(() => {
+    api.get("/api/categories")
+      .then(res => setCategories(res.data.categories || []))
+      .catch(() => showSnackbar("Failed to load categories", "error"));
+  }, []);
+ // ---------------- FETCH EVENTS ----------------
+  
+ const fetchHostedEvents = async () => {
     if (!userId) return;
     setLoading(true);
     try {
@@ -112,7 +118,7 @@ const EventHostPart = ({ userId, showSnackbar }) => {
       name: e.name || "",
       date: e.date ? format(new Date(e.date), "yyyy-MM-dd") : "",
       location: e.location || "",
-      category: e.category?.name || e.category || "",
+      category: e.category?._id || "", // ✅ FIXED
       description: e.description || "",
       maxParticipants: e.maxParticipants || 0
     });
@@ -318,52 +324,99 @@ const EventHostPart = ({ userId, showSnackbar }) => {
       )}
 
       {/* ---------------- EDIT EVENT DIALOG ---------------- */}
-      <Dialog open={openEdit} onClose={() => setOpenEdit(false)} maxWidth="md" fullWidth>
+      <Dialog open={openEdit} onClose={() => setOpenEdit(false)} fullWidth maxWidth="md">
         <DialogTitle>Edit Event</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField fullWidth label="Name" value={editData.name} onChange={(e) => setEditData({ ...editData, name: e.target.value })} />
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField fullWidth type="date" label="Date" value={editData.date} onChange={(e) => setEditData({ ...editData, date: e.target.value })} InputLabelProps={{ shrink: true }} />
-              <TextField fullWidth label="Location" value={editData.location} onChange={(e) => setEditData({ ...editData, location: e.target.value })} />
+            <TextField
+              fullWidth
+              label="Name"
+              value={editData.name}
+              onChange={(e) =>
+                setEditData({ ...editData, name: e.target.value })
+              }
+            />
+
+            <Stack direction="row" spacing={2}>
+              <TextField
+                fullWidth
+                type="date"
+                label="Date"
+                value={editData.date}
+                InputLabelProps={{ shrink: true }}
+                onChange={(e) =>
+                  setEditData({ ...editData, date: e.target.value })
+                }
+              />
+              <TextField
+                fullWidth
+                label="Location"
+                value={editData.location}
+                onChange={(e) =>
+                  setEditData({ ...editData, location: e.target.value })
+                }
+              />
             </Stack>
+
             <FormControl fullWidth>
               <InputLabel>Category</InputLabel>
-              <Select value={editData.category} label="Category" onChange={(e) => setEditData({ ...editData, category: e.target.value })}>
-                <MenuItem value="Food Donation">Food Donation</MenuItem>
-                <MenuItem value="Tree Planting">Tree Planting</MenuItem>
-                <MenuItem value="Cleaning">Cleaning</MenuItem>
+              <Select
+                value={editData.category}
+                label="Category"
+                onChange={(e) =>
+                  setEditData({ ...editData, category: e.target.value })
+                }
+              >
+                {categories.map((c) => (
+                  <MenuItem key={c._id} value={c._id}>
+                    {c.name}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
-            <TextField fullWidth multiline rows={3} label="Description" value={editData.description} onChange={(e) => setEditData({ ...editData, description: e.target.value })} />
+
+            <TextField
+              fullWidth
+              multiline
+              rows={3}
+              label="Description"
+              value={editData.description}
+              onChange={(e) =>
+                setEditData({ ...editData, description: e.target.value })
+              }
+            />
+
             <TextField
               fullWidth
               type="number"
               label="Max Participants"
               value={editData.maxParticipants}
-              onChange={(e) => {
-                const value = parseInt(e.target.value, 10);
-                if (value < selectedEvent?.currentParticipants) {
-                  showSnackbar(`Cannot set below current participants (${selectedEvent.currentParticipants})`, "error");
-                  return;
-                }
-                setEditData({ ...editData, maxParticipants: value });
-              }}
-              InputProps={{ inputProps: { min: selectedEvent?.currentParticipants || 1 } }}
+              onChange={(e) =>
+                setEditData({
+                  ...editData,
+                  maxParticipants: parseInt(e.target.value, 10)
+                })
+              }
             />
-            <Button variant="outlined" component="label" startIcon={<CloudUploadIcon />}>
+
+            <Button component="label" variant="outlined" startIcon={<CloudUploadIcon />}>
               Upload Image
-              <input type="file" hidden accept="image/*" onChange={handleFileInput} />
+              <input hidden type="file" accept="image/*" onChange={handleFileInput} />
             </Button>
           </Stack>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenEdit(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleEditSubmit}>Save</Button>
+          <Button variant="contained" onClick={handleEditSubmit}>
+            Save
+          </Button>
         </DialogActions>
+      
       </Dialog>
 
-      {/* ---------------- DISABLE EVENT DIALOG ---------------- */}
+
+{/* ---------------- DISABLE EVENT DIALOG ---------------- */}
+     
       <Dialog open={openDisable} onClose={() => setOpenDisable(false)}>
         <DialogTitle>{selectedEvent?.isDisabled ? "Enable" : "Disable"} Event</DialogTitle>
        
